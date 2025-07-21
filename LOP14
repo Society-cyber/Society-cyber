@@ -1,0 +1,218 @@
+-- // UI
+local CoreGui = game:GetService("CoreGui")
+if CoreGui:FindFirstChild("AntarcticaBotUI") then
+	CoreGui:FindFirstChild("AntarcticaBotUI"):Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "AntarcticaBotUI"
+
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 240, 0, 200)
+Frame.Position = UDim2.new(0, 100, 0, 100)
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+
+local StartBtn = Instance.new("TextButton", Frame)
+StartBtn.Size = UDim2.new(0, 220, 0, 40)
+StartBtn.Position = UDim2.new(0, 10, 0, 10)
+StartBtn.Text = "▶ Mulai Bot"
+StartBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+StartBtn.TextColor3 = Color3.new(1, 1, 1)
+StartBtn.Font = Enum.Font.SourceSansBold
+StartBtn.TextSize = 18
+
+local StopBtn = Instance.new("TextButton", Frame)
+StopBtn.Size = UDim2.new(0, 220, 0, 40)
+StopBtn.Position = UDim2.new(0, 10, 0, 60)
+StopBtn.Text = "⏹ Stop Bot"
+StopBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+StopBtn.TextColor3 = Color3.new(1, 1, 1)
+StopBtn.Font = Enum.Font.SourceSansBold
+StopBtn.TextSize = 18
+
+local LoopCountBox = Instance.new("TextBox", Frame)
+LoopCountBox.Size = UDim2.new(0, 220, 0, 30)
+LoopCountBox.Position = UDim2.new(0, 10, 0, 110)
+LoopCountBox.PlaceholderText = "Jumlah Loop (Contoh: 40)"
+LoopCountBox.Text = ""
+LoopCountBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+LoopCountBox.TextColor3 = Color3.new(1, 1, 1)
+LoopCountBox.Font = Enum.Font.SourceSans
+LoopCountBox.TextSize = 16
+
+local LoopInfoText = Instance.new("TextLabel", Frame)
+LoopInfoText.Size = UDim2.new(0, 220, 0, 20)
+LoopInfoText.Position = UDim2.new(0, 10, 0, 145)
+LoopInfoText.BackgroundTransparency = 1
+LoopInfoText.TextColor3 = Color3.fromRGB(255, 255, 255)
+LoopInfoText.Text = "Loop: 0"
+LoopInfoText.Font = Enum.Font.SourceSans
+LoopInfoText.TextSize = 14
+
+local StatusText = Instance.new("TextLabel", Frame)
+StatusText.Size = UDim2.new(0, 220, 0, 20)
+StatusText.Position = UDim2.new(0, 10, 0, 170)
+StatusText.BackgroundTransparency = 1
+StatusText.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatusText.Text = "Status: Menunggu..."
+StatusText.Font = Enum.Font.SourceSans
+StatusText.TextSize = 14
+StatusText.TextWrapped = true
+
+-- // Logic
+local isRunning = false
+local loopCount = 0
+local maxLoops = 1
+local player = game.Players.LocalPlayer
+
+local teleportSequence = {
+	{pos = Vector3.new(-3718, 239, 262), waitAfter = 90, minum = true},
+	{pos = Vector3.new(-3719, 235, 236), waitAfter = 5},
+	{pos = Vector3.new(1800, 115, -161), waitAfter = 200, minum = true},
+	{pos = Vector3.new(1789, 115, -138), waitAfter = 5},
+	{pos = Vector3.new(5885, 331, 4), waitAfter = 290, minum = true},
+	{pos = Vector3.new(5892, 331, -19), waitAfter = 5},
+	{pos = Vector3.new(9002, 597, 86), waitAfter = 150, minum = true},
+	{pos = Vector3.new(8993, 606, 103), waitAfter = 5},
+	{pos = Vector3.new(10964, 549, -2), waitAfter = 80, minum = true}
+}
+
+local function spawnTempPlatform(pos)
+	local allowed = {
+		["-3718,239,262"] = true,
+		["1800,115,-161"] = true,
+		["5885,331,4"] = true,
+		["9002,597,86"] = true,
+		["10964,549,-2"] = true
+	}
+	local key = math.floor(pos.X) .. "," .. math.floor(pos.Y) .. "," .. math.floor(pos.Z)
+	if not allowed[key] then return nil end
+
+	local part = Instance.new("Part")
+	part.Size = Vector3.new(8, 1, 8)
+	part.Anchored = true
+	part.CanCollide = true
+	part.Transparency = 0.4
+	part.Color = Color3.fromRGB(120, 120, 120)
+	part.Position = pos
+	part.Name = "TempPlatform"
+	part.Parent = workspace
+
+	task.delay(5, function()
+		if part and part.Parent then
+			part:Destroy()
+		end
+	end)
+
+	return 5
+end
+
+local function equipTool()
+	local char = player.Character
+	local tool = player.Backpack:FindFirstChild("Water Bottle")
+	if tool then
+		tool.Parent = char
+	end
+end
+
+local function jump(humanoid)
+	humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+end
+
+local function countdown(seconds)
+	for i = seconds, 0, -1 do
+		if not isRunning then return end
+		StatusText.Text = "Sisa waktu: " .. i .. " detik"
+		wait(1)
+	end
+end
+
+local function minumRoutine(humanoid)
+	jump(humanoid)
+	wait(0.5)
+
+	local char = player.Character
+	local tool = char and char:FindFirstChild("Water Bottle")
+	if not tool then return end
+
+	for i = 1, 7 do
+		if not isRunning then return end
+		tool:Activate()
+		wait(1.5)
+	end
+
+	wait(0.5)
+	jump(humanoid)
+end
+
+local function runBot()
+	loopCount = 0
+	while isRunning and loopCount < maxLoops do
+		loopCount += 1
+		LoopInfoText.Text = "Loop: " .. loopCount
+
+		local char = player.Character or player.CharacterAdded:Wait()
+		local humanoid = char:WaitForChild("Humanoid")
+
+		equipTool()
+
+		for _, step in ipairs(teleportSequence) do
+			if not isRunning then return end
+
+			local platformDelay = spawnTempPlatform(step.pos)
+			char:MoveTo(step.pos)
+			wait(2)
+
+			if platformDelay then wait(platformDelay) end
+
+			if step.minum then
+				task.spawn(function()
+					minumRoutine(humanoid)
+				end)
+			end
+
+			countdown(step.waitAfter)
+		end
+
+		-- Jalan ke titik akhir
+		local finalPos = Vector3.new(10987, 549, 100)
+		local platformDelay = spawnTempPlatform(finalPos)
+		humanoid:MoveTo(finalPos)
+		humanoid.MoveToFinished:Wait()
+		wait(5)
+
+		-- Reset karakter
+		if char and char:FindFirstChild("Humanoid") then
+			StatusText.Text = "Mereset karakter..."
+			char:BreakJoints()
+		end
+
+		player.CharacterAdded:Wait()
+		wait(2)
+	end
+
+	StatusText.Text = "Bot selesai " .. loopCount .. "×."
+end
+
+-- // Tombol
+StartBtn.MouseButton1Click:Connect(function()
+	if not isRunning then
+		local input = tonumber(LoopCountBox.Text)
+		if input and input > 0 then
+			maxLoops = input
+			isRunning = true
+			StatusText.Text = "Bot sedang berjalan..."
+			coroutine.wrap(runBot)()
+		else
+			StatusText.Text = "Masukkan jumlah loop yang valid!"
+		end
+	end
+end)
+
+StopBtn.MouseButton1Click:Connect(function()
+	isRunning = false
+	StatusText.Text = "Bot dihentikan."
+end)
